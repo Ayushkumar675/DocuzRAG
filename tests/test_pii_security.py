@@ -314,5 +314,68 @@ def test_answer_service_refuses_bank_account_statement():
     assert len(result.retrieved_evidence) == 0
 
 
+def test_technical_documents_and_handbooks_not_blocked():
+    """Verify that technical documents, matrices, code tokens, and ordinary books never trigger security block."""
+    from core.schemas import EvidenceRecord
+    from core.guardrails.pii import is_sensitive_identity_or_secret_passage, is_sensitive_filename
+    from core.retrieval.answering import GroundedAnswerService
+    from core.retrieval.query import RetrievedEvidence
+
+    # 1. Filename checks
+    assert is_sensitive_filename("LLM Engineer's Handbook.pdf") is False
+    assert is_sensitive_filename("book.pdf") is False
+    assert is_sensitive_filename("company_expansion.pdf") is False
+    assert is_sensitive_filename("world_bank_report.pdf") is False
+    assert is_sensitive_filename("financial_analysis.pdf") is False
+    assert is_sensitive_filename("japan_history.pdf") is False
+    assert is_sensitive_filename("pan.jpeg") is True
+    assert is_sensitive_filename("aadhaar_card.pdf") is True
+    assert is_sensitive_filename("AccountStatement_11102026_163420_unlocked.pdf") is True
+    assert is_sensitive_filename("passbook.pdf") is True
+
+    # 2. Evidence chunks from technical handbook with numeric tables and variables
+    handbook_chunk = EvidenceRecord(
+        evidence_id="ev-handbook-1",
+        collection_id="col-test",
+        document_id="doc-handbook",
+        filename="LLM Engineer's Handbook.pdf",
+        page_number=42,
+        content_type="TEXT",
+        source_reference="LLM_Handbook.pdf#chunk=1",
+        score=None,
+        text=(
+            "Transformers utilize self-attention mechanisms to process sequential data. "
+            "Batch sizes can be 2001 8000 2000 in large tensor operations. "
+            "Variables such as model0001a and epoch0001b control the training loop. "
+            "Contact publisher at support@packtpub.com for details."
+        ),
+        image_reference=None,
+        section="Chapter 3",
+        metadata={"filename": "LLM Engineer's Handbook.pdf"},
+    )
+    assert is_sensitive_identity_or_secret_passage(handbook_chunk) is False
+
+    # 3. Grounded answer service successfully answers questions from this document
+    class MockRetriever:
+        def retrieve(self, collection_id, question, selected_document_ids, top_k):
+            return [RetrievedEvidence(handbook_chunk, retrieval_score=0.95)]
+
+    class MockReasoningClient:
+        def answer(self, question, context):
+            return "Transformers utilize self-attention mechanisms to process sequential data. [evidence:ev-handbook-1]"
+
+    service = GroundedAnswerService(retriever=MockRetriever(), reasoning_client=MockReasoningClient())
+    res = service.answer(
+        collection_id="col-test",
+        question="What are Transformers?",
+        selected_document_ids=["doc-handbook"],
+        top_k=5,
+    )
+    assert res.answerability.value == "SUPPORTED"
+    assert "Transformers utilize self-attention mechanisms" in res.answer
+    assert res.response_mode == "llm_structured"
+
+
+
 
 

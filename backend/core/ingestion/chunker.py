@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.ingestion.parser import ParsedItem
-from core.guardrails.pii import redact_pii, detect_pii_types
+from core.guardrails.pii import redact_pii, detect_pii_types, is_sensitive_filename, contains_high_risk_pii
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +81,11 @@ def _chunk_from_item(
     if pii_types:
         metadata["has_pii"] = True
         metadata["pii_types"] = pii_types
-        if any(t in {"aadhaar", "pan", "bank_account", "bank_transaction"} for t in pii_types):
+        fname = item.metadata.get("filename", "") or item.source_reference
+        if is_sensitive_filename(fname) or (
+            any(t in {"aadhaar", "pan", "bank_account", "bank_transaction"} for t in pii_types)
+            and contains_high_risk_pii(text)
+        ):
             metadata["is_sensitive_id_document"] = True
             metadata["is_sensitive_document"] = True
         text = redact_pii(text)

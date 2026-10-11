@@ -52,7 +52,7 @@ MASKED_AADHAAR_PATTERN = re.compile(
 
 # 2. Indian PAN Card:
 PAN_PATTERN = re.compile(
-    r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE
+    r"\b[A-Z]{5}[0-9]{4}[A-Z]\b"
 )
 PAN_LABELED_PATTERN = re.compile(
     r"(?i)\b(?:pan\s*(?:card|no|num|number)?|permanent\s*account\s*number)\s*[:#-]?\s*([A-Za-z]{5}[0-9]{4}[A-Za-z])\b"
@@ -114,15 +114,61 @@ PHONE_LABELED_PATTERN = re.compile(
 
 # --- Detection Functions ---
 
+def is_genuine_aadhaar_text(text: str) -> bool:
+    """Check if the text contains genuine Aadhaar identity indicators or labeled numbers."""
+    if not text:
+        return False
+    if AADHAAR_DOCUMENT_INDICATOR.search(text) or AADHAAR_LABELED_PATTERN.search(text) or MASKED_AADHAAR_PATTERN.search(text):
+        return True
+    if "[REDACTED_AADHAAR]" in text:
+        return True
+    # For standalone formatted numbers, require identity context to avoid false positives on matrix/table numbers
+    if AADHAAR_FORMATTED_PATTERN.search(text):
+        lower = text.lower()
+        if (
+            DOB_PATTERN.search(text)
+            or PARENT_RELATION_PATTERN.search(text)
+            or ENROLMENT_PATTERN.search(text)
+            or any(k in lower for k in ("uidai", "aadhaar", "aadhar", "enrolment", "enrollment", "govt of india", "government of india", "unique identification", "mera aadhaar"))
+        ):
+            return True
+    return False
+
+
+def is_sensitive_filename(filename: str | None) -> bool:
+    """Return True if filename denotes a dedicated identity or sensitive financial record."""
+    if not filename:
+        return False
+    fname = filename.lower().strip()
+    # 1. Aadhaar
+    if any(k in fname for k in ("aadhaar", "aadhar", "uidai")):
+        return True
+    # 2. PAN (must match pan as standalone word or card prefix, e.g. pan.jpeg, pan_card, pancard)
+    if re.search(r"(?:^|[\W_])pan(?:[\W_]|$|card)", fname):
+        return True
+    # 3. Bank passbooks and statements
+    if any(k in fname for k in ("passbook", "accountstatement", "account_statement", "bank_statement", "bankstatement")):
+        return True
+    # 4. Credentials
+    if any(k in fname for k in ("credential", "secret_key", "password_store", "passwords")):
+        return True
+    # 5. Payslips
+    if any(k in fname for k in ("payslip", "salary_slip")):
+        return True
+    return False
+
+
 def detect_pii_types(text: str) -> list[str]:
     """Detect which categories of sensitive personal data are present in the text."""
     if not text:
         return []
     
     types: list[str] = []
-    if AADHAAR_FORMATTED_PATTERN.search(text) or AADHAAR_LABELED_PATTERN.search(text) or AADHAAR_DOCUMENT_INDICATOR.search(text):
+    if is_genuine_aadhaar_text(text):
         types.append("aadhaar")
-    if PAN_PATTERN.search(text) or PAN_LABELED_PATTERN.search(text) or PAN_DOCUMENT_INDICATOR.search(text):
+    if PAN_LABELED_PATTERN.search(text) or PAN_DOCUMENT_INDICATOR.search(text) or "[REDACTED_PAN]" in text:
+        types.append("pan")
+    elif PAN_PATTERN.search(text):
         types.append("pan")
     if BANK_ACCOUNT_LABELED_PATTERN.search(text) or CIF_LABELED_PATTERN.search(text) or (BANK_DOCUMENT_INDICATOR.search(text) and IFSC_PATTERN.search(text)):
         types.append("bank_account")
@@ -158,9 +204,7 @@ def contains_high_risk_pii(text: str) -> bool:
 
 
 SENSITIVE_FILENAME_KEYWORDS = (
-    "aadhar", "aadhaar", "pan", "passbook", "identity", "credential",
-    "statement", "accountstatement", "bank", "financial", "ledger",
-    "transaction", "upi", "salary", "payslip", "tax", "itr"
+    "aadhar", "aadhaar", "passbook", "accountstatement", "payslip"
 )
 
 
@@ -169,43 +213,37 @@ def is_sensitive_identity_or_secret_passage(evidence: Any) -> bool:
     if evidence is None:
         return False
     
-    # 1. Inspect metadata
-    meta = getattr(evidence, "metadata", None) or {}
-    if meta.get("is_sensitive_id_document") or meta.get("is_sensitive_document") or meta.get("is_sensitive_financial_document"):
-        return True
-    if meta.get("has_pii"):
-        pii_types = meta.get("pii_types", [])
-        if any(t in {"aadhaar", "pan", "bank_account", "bank_transaction", "payment_card", "password_or_credential"} for t in pii_types):
-            return True
-            
-    # 2. Inspect filename
     fname = getattr(evidence, "filename", "") or ""
-    if any(k in fname.lower() for k in SENSITIVE_FILENAME_KEYWORDS):
-        return True
-        
-    # 3. Inspect text content
+    meta = getattr(evidence, "metadata", None) or {}
     text = getattr(evidence, "text", "") or ""
+
+    # 1. Inspect filename
+    if is_sensitive_filename(fname):
+        return True
+
+    # 2. Inspect metadata (trust only if filename is sensitive or if text actually contains high-risk PII)
+    if meta.get("is_sensitive_id_document") or meta.get("is_sensitive_financial_document") or meta.get("is_sensitive_document"):
+        if not fname or is_sensitive_filename(fname):
+            return True
+        if contains_high_risk_pii(text):
+            return True
+        return False
+
     if not text:
         return False
         
-    # Aadhaar document indicators
-    if AADHAAR_DOCUMENT_INDICATOR.search(text):
-        return True
-    if MASKED_AADHAAR_PATTERN.search(text) or AADHAAR_FORMATTED_PATTERN.search(text) or AADHAAR_LABELED_PATTERN.search(text):
+    # 3. Aadhaar document indicators
+    if is_genuine_aadhaar_text(text):
         return True
         
-    # PAN document indicators
-    if PAN_DOCUMENT_INDICATOR.search(text):
+    # 4. PAN document indicators
+    if PAN_DOCUMENT_INDICATOR.search(text) or PAN_LABELED_PATTERN.search(text) or MASKED_PAN_PATTERN.search(text) or "[REDACTED_PAN]" in text:
         return True
-    if MASKED_PAN_PATTERN.search(text) or PAN_PATTERN.search(text) or PAN_LABELED_PATTERN.search(text):
+    if PAN_PATTERN.search(text) and any(k in text.lower() for k in ("income tax", "permanent account", "signature", "father", "govt of india", "government of india")):
         return True
         
-    # Bank statement & transaction indicators
-    if BANK_TRANSACTION_INDICATOR.search(text):
-        return True
-
-    # Bank passbook / account indicators
-    if BANK_DOCUMENT_INDICATOR.search(text) and (
+    # 5. Bank passbook / account statement indicators
+    if (BANK_DOCUMENT_INDICATOR.search(text) or "[REDACTED_ACCOUNT]" in text) and (
         BANK_ACCOUNT_LABELED_PATTERN.search(text)
         or MASKED_BANK_PATTERN.search(text)
         or IFSC_PATTERN.search(text)
@@ -213,8 +251,8 @@ def is_sensitive_identity_or_secret_passage(evidence: Any) -> bool:
     ):
         return True
         
-    # High-risk credentials or secrets
-    if PASSWORD_LABELED_PATTERN.search(text) or SECRET_TOKEN_PATTERN.search(text):
+    # 6. High-risk credentials or secrets
+    if PASSWORD_LABELED_PATTERN.search(text) or SECRET_TOKEN_PATTERN.search(text) or "[REDACTED_PASSWORD]" in text:
         return True
         
     return False

@@ -11,7 +11,7 @@ from core.ingestion.loader import DocumentLoader
 from core.schemas import DocumentRecord, EvidenceRecord
 from core.storage.metadata_store import MetadataStore
 from core.observability import log_event, log_span
-from core.guardrails.pii import SENSITIVE_FILENAME_KEYWORDS
+from core.guardrails.pii import is_sensitive_filename
 
 
 class DocumentNotFoundError(LookupError):
@@ -94,15 +94,15 @@ class IngestionService:
                         evidence_items, document, item.image_reference or item.source_reference
                     )
 
-            # Document-level sensitivity propagation
-            is_sensitive_fname = any(k in document.filename.lower() for k in SENSITIVE_FILENAME_KEYWORDS)
-            has_sensitive_chunk = any(
+            # Document-level sensitivity propagation (strictly for dedicated ID/financial documents)
+            is_sensitive_fname = is_sensitive_filename(document.filename)
+            has_sensitive_id_chunk = any(
                 (rec.metadata or {}).get("is_sensitive_id_document")
-                or (rec.metadata or {}).get("is_sensitive_document")
-                or (rec.metadata or {}).get("has_pii")
+                or (rec.metadata or {}).get("is_sensitive_financial_document")
                 for rec in evidence_items
             )
-            if is_sensitive_fname or has_sensitive_chunk:
+            # Propagate document-level sensitivity only if filename matches or it's a short dedicated ID/financial card
+            if is_sensitive_fname or (has_sensitive_id_chunk and len(evidence_items) <= 15):
                 for rec in evidence_items:
                     rec.metadata["is_sensitive_document"] = True
                     rec.metadata["is_sensitive_id_document"] = True
