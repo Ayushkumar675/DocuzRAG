@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "logfire": {
+      "type": "remote",
+      "url": "https://logfire-us.pydantic.dev/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:LOGFIRE_MCP_TOKEN}"
+      }
+    }
+  }
+}

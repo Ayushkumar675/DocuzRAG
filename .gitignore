@@ -1,0 +1,36 @@
+# Virtual environments
+venv/
+venv/**
+.venv/
+.venv/**
+env/
+env/**
+ENV/
+ENV/**
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+.mcp.json
+.logfire/
+.opencode/
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+# Data and uploads
+data/*
+!data/documents/
+!data/processed/
+!data/indexes/
+data/documents/*
+!data/documents/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/indexes/*
+!data/indexes/.gitkeep
+*.db
+

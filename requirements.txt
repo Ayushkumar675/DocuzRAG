@@ -1,0 +1,31 @@
+# Web/API layer
+fastapi
+python-multipart
+streamlit
+uvicorn[standard]
+
+# Configuration and schemas
+pydantic
+python-dotenv
+
+# NVIDIA NIM and vector storage
+httpx
+openai
+qdrant-client
+
+# Document and multimodal ingestion
+Pillow
+PyMuPDF
+python-docx
+pytesseract
+
+# Retrieval and tabular processing
+numpy
+pandas
+rank-bm25
+
+# Verification
+pytest
+
+# Observability
+logfire[fastapi,system-metrics]

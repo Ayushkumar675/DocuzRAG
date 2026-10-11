@@ -1,0 +1,27 @@
+name: docuzrag
+
+services:
+  qdrant:
+    container_name: docuzrag-qdrant
+    image: qdrant/qdrant:v1.12.5
+    restart: unless-stopped
+    ports:
+      # Dedicated DocuzRAG ports. The existing docurag-final service on its
+      # own port is not referenced or modified by this compose project.
+      - "6335:6333"
+      - "6336:6334"
+    volumes:
+      - docuzrag_qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__LOG_LEVEL: INFO
+    healthcheck:
+      # The minimal Qdrant image has no curl; checking the pinned binary keeps
+      # Docker health meaningful while HTTP readiness is verified externally.
+      test: ["CMD", "/qdrant/qdrant", "--version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  docuzrag_qdrant_data:
+    name: docuzrag_qdrant_data

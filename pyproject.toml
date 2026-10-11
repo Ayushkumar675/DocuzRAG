@@ -1,0 +1,29 @@
+[project]
+name = "docunova"
+version = "0.1.0"
+description = "Evidence-first multimodal document intelligence platform"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "python-multipart",
+  "streamlit",
+  "uvicorn[standard]",
+  "pydantic",
+  "python-dotenv",
+  "httpx",
+  "openai",
+  "qdrant-client",
+  "Pillow",
+  "PyMuPDF",
+  "python-docx",
+  "pytesseract",
+  "numpy",
+  "pandas",
+  "rank-bm25",
+  "pytest",
+  "logfire[fastapi,system-metrics]",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["tests"]
