@@ -75,7 +75,7 @@ export default function UploadView({
           </h1>
         </div>
         <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl pl-10">
-          Add your study and research materials to start exploring. PDF, DOCX, TXT, PPTX, and images supported.
+          Add your study and research materials to start exploring. PDF, DOCX, TXT, MD, CSV, PPTX, and images supported.
         </p>
       </div>
 
@@ -126,6 +126,12 @@ export default function UploadView({
                 TXT
               </span>
               <span className="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high dark:bg-surface-container text-on-surface-variant">
+                MD (Markdown)
+              </span>
+              <span className="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high dark:bg-surface-container text-on-surface-variant">
+                CSV
+              </span>
+              <span className="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high dark:bg-surface-container text-on-surface-variant">
                 PPTX
               </span>
               <span className="font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-surface-container-high dark:bg-surface-container text-on-surface-variant">
@@ -138,7 +144,7 @@ export default function UploadView({
               type="file"
               multiple
               disabled={frozen}
-              accept=".pdf,.docx,.txt,.pptx,.png,.jpg,.jpeg,.md,.csv"
+              accept=".pdf,.docx,.txt,.pptx,.png,.jpg,.jpeg,.md,.markdown,.csv,text/markdown,text/x-markdown,text/plain"
               onChange={handleFileInputChange}
               className="hidden"
             />
@@ -180,6 +186,8 @@ export default function UploadView({
                   const isPdf = doc.file_type.toLowerCase() === "pdf";
                   const isDoc = doc.file_type.toLowerCase() === "docx" || doc.file_type.toLowerCase() === "doc";
                   const isPpt = doc.file_type.toLowerCase() === "pptx" || doc.file_type.toLowerCase() === "ppt";
+                  const isMd = doc.file_type.toLowerCase() === "md" || doc.file_type.toLowerCase() === "markdown";
+                  const isCsv = doc.file_type.toLowerCase() === "csv";
 
                   return (
                     <div
@@ -203,10 +211,14 @@ export default function UploadView({
                               ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                               : isPpt
                               ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                              : isMd
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : isCsv
+                              ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
                               : "bg-surface-container text-on-surface-variant"
                           }`}
                         >
-                          {isPdf ? "PDF" : isDoc ? "DOC" : isPpt ? "PPT" : doc.file_type.toUpperCase().slice(0, 3)}
+                          {isPdf ? "PDF" : isDoc ? "DOC" : isPpt ? "PPT" : isMd ? "MD" : isCsv ? "CSV" : doc.file_type.toUpperCase().slice(0, 3)}
                         </div>
 
                         <div className="flex flex-col min-w-0">

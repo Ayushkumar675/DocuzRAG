@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 from core.observability import observed_service, log_event
 
 
-ALLOWED_EXTENSIONS = frozenset({".pdf", ".docx", ".txt", ".md", ".csv", ".png", ".jpg", ".jpeg"})
+ALLOWED_EXTENSIONS = frozenset({".pdf", ".docx", ".txt", ".md", ".markdown", ".csv", ".png", ".jpg", ".jpeg"})
 SENSITIVE_NAME_PARTS = frozenset({"credentials", "credential", "secret", "secrets", "id_rsa"})
 SENSITIVE_SUFFIXES = frozenset({".key", ".pem", ".p12", ".pfx"})
 

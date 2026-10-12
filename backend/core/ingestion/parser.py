@@ -45,7 +45,7 @@ def parse_document(
         return parse_docx(path, document_id, filename)
     if extension == ".csv":
         return parse_csv(path, document_id, filename)
-    if extension in {".txt", ".md"}:
+    if extension in {".txt", ".md", ".markdown"}:
         return parse_text(path, document_id, filename)
     if extension in {".png", ".jpg", ".jpeg"}:
         return parse_image(path, document_id, filename)
