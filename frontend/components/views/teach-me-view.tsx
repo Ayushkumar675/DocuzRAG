@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SourceDocSelector from "../source-doc-selector";
 import { Document, LearningArtifact, LearningEvidence, LearningGenerateInput, learningSourceUrl, TeachAnswer } from "../../lib/api";
 
@@ -40,6 +40,25 @@ export default function TeachMeView({
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [submittingCheck, setSubmittingCheck] = useState<Record<string, boolean>>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Multiple source document state
+  const [localDocIds, setLocalDocIds] = useState<string[]>(
+    selectedDocIds ?? (selectedDocId ? [selectedDocId] : documents.map((d) => d.id))
+  );
+
+  useEffect(() => {
+    if (selectedDocIds) {
+      setLocalDocIds(selectedDocIds);
+    } else if (selectedDocId) {
+      setLocalDocIds([selectedDocId]);
+    }
+  }, [selectedDocIds, selectedDocId]);
+
+  const effectiveDocIds = selectedDocIds ?? localDocIds;
+  const handleDocIdsChange = (ids: string[]) => {
+    setLocalDocIds(ids);
+    if (onSelectDocIds) onSelectDocIds(ids);
+  };
 
   const realSections = artifact?.content?.lesson_sections ?? [];
   const realChecks = artifact?.content?.understanding_checks ?? [];
@@ -88,17 +107,15 @@ export default function TeachMeView({
       {/* Source Document & Level Selector Bar */}
       <SourceDocSelector
         documents={documents}
-        selectedDocId={selectedDocId}
-        onSelectDocId={onSelectDocId}
-        selectedDocIds={selectedDocIds}
-        onSelectDocIds={onSelectDocIds}
+        selectedDocIds={effectiveDocIds}
+        onSelectDocIds={handleDocIdsChange}
         topic={topic}
         onTopicChange={setTopic}
         topicPlaceholder="Focus topic (optional, e.g. Backpropagation, Optimization)..."
-        onGenerate={() => onGenerate(level, topic.trim(), Boolean(artifact), selectedDocIds)}
+        onGenerate={() => onGenerate(level, topic.trim(), Boolean(artifact), effectiveDocIds)}
         generateLabel={artifact ? "Regenerate Lesson" : "Generate Lesson"}
         loading={loading}
-        disabled={!ready}
+        disabled={!ready || effectiveDocIds.length === 0}
         extraControls={
           <div className="flex flex-col gap-1 min-w-[200px]">
             <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">

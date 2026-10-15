@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SourceDocSelector from "../source-doc-selector";
 import { Document, LearningArtifact, LearningEvidence, LearningGenerateInput, learningSourceUrl } from "../../lib/api";
 
@@ -48,6 +48,25 @@ export default function CheatSheetView({
   const [topic, setTopic] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Multiple source document state
+  const [localDocIds, setLocalDocIds] = useState<string[]>(
+    selectedDocIds ?? (selectedDocId ? [selectedDocId] : documents.map((d) => d.id))
+  );
+
+  useEffect(() => {
+    if (selectedDocIds) {
+      setLocalDocIds(selectedDocIds);
+    } else if (selectedDocId) {
+      setLocalDocIds([selectedDocId]);
+    }
+  }, [selectedDocIds, selectedDocId]);
+
+  const effectiveDocIds = selectedDocIds ?? localDocIds;
+  const handleDocIdsChange = (ids: string[]) => {
+    setLocalDocIds(ids);
+    if (onSelectDocIds) onSelectDocIds(ids);
+  };
+
   const sections = artifact?.content?.sections ?? [];
   const selectedDoc = documents.find((d) => d.id === selectedDocId);
 
@@ -89,17 +108,15 @@ export default function CheatSheetView({
       {/* Source Document & Format Selector */}
       <SourceDocSelector
         documents={documents}
-        selectedDocId={selectedDocId}
-        onSelectDocId={onSelectDocId}
-        selectedDocIds={selectedDocIds}
-        onSelectDocIds={onSelectDocIds}
+        selectedDocIds={effectiveDocIds}
+        onSelectDocIds={handleDocIdsChange}
         topic={topic}
         onTopicChange={setTopic}
         topicPlaceholder="Focus topic (optional, e.g. Algorithms, Loss Functions)..."
-        onGenerate={() => onGenerate(selectedFormat, topic.trim(), Boolean(artifact), selectedDocIds)}
+        onGenerate={() => onGenerate(selectedFormat, topic.trim(), Boolean(artifact), effectiveDocIds)}
         generateLabel={artifact ? "Regenerate Sheet" : "Generate Cheat Sheet"}
         loading={loading}
-        disabled={!ready}
+        disabled={!ready || effectiveDocIds.length === 0}
         extraControls={
           <div className="flex flex-col gap-1 min-w-[200px]">
             <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">
@@ -164,8 +181,8 @@ export default function CheatSheetView({
           ) : (
             <button
               type="button"
-              onClick={() => onGenerate(selectedFormat, topic.trim(), false)}
-              disabled={!ready || documents.length === 0}
+              onClick={() => onGenerate(selectedFormat, topic.trim(), false, effectiveDocIds)}
+              disabled={!ready || documents.length === 0 || effectiveDocIds.length === 0}
               className="mt-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-title-md text-title-md shadow-md hover:shadow-lg transition-all disabled:opacity-50"
             >
               Generate Cheat Sheet →
@@ -188,7 +205,7 @@ export default function CheatSheetView({
                       key={f.id}
                       onClick={() => {
                         setSelectedFormat(f.id);
-                        onGenerate(f.id, topic.trim(), false);
+                        onGenerate(f.id, topic.trim(), false, effectiveDocIds);
                       }}
                       type="button"
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-title-md text-title-md transition-all text-left ${
@@ -209,21 +226,27 @@ export default function CheatSheetView({
             </div>
 
             {/* Document Context Card */}
-            {selectedDoc && (
+            {effectiveDocIds.length > 0 && (
               <div className="p-4 rounded-2xl bg-surface-elevated/90 border border-border-glass shadow-lg flex flex-col gap-2">
                 <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">
-                  Active Document Source
+                  Active Document Source{effectiveDocIds.length > 1 ? "s" : ""} ({effectiveDocIds.length})
                 </span>
-                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-surface-base border border-border-glass">
-                  <span className="material-symbols-outlined text-rose-400 text-[22px]">picture_as_pdf</span>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-title-md text-title-md text-text-crisp-white truncate font-semibold">
-                      {selectedDoc.filename}
-                    </span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      {(selectedDoc.size / (1024 * 1024)).toFixed(1)} MB
-                    </span>
-                  </div>
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                  {documents
+                    .filter((d) => effectiveDocIds.includes(d.id))
+                    .map((d) => (
+                      <div key={d.id} className="flex items-center gap-2.5 p-2 rounded-xl bg-surface-base border border-border-glass">
+                        <span className="material-symbols-outlined text-rose-400 text-[18px]">picture_as_pdf</span>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="font-title-md text-title-md text-text-crisp-white truncate font-semibold">
+                            {d.filename}
+                          </span>
+                          <span className="font-label-sm text-label-sm text-on-surface-variant">
+                            {(d.size / (1024 * 1024)).toFixed(1)} MB
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

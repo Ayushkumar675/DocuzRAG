@@ -248,9 +248,7 @@ export default function Home() {
 
   const handleSelectDocIds = (ids: string[]) => {
     setSelectedDocIds(ids);
-    if (ids.length > 0) {
-      setSelectedDocId(ids[0]);
-    }
+    setSelectedDocId(ids[0] ?? "");
   };
 
   const handleCreateCollection = async (name: string) => {

@@ -58,7 +58,6 @@ export default function QuizzesView({
   const handleDocIdsChange = (ids: string[]) => {
     setLocalDocIds(ids);
     if (onSelectDocIds) onSelectDocIds(ids);
-    if (onSelectDocId) onSelectDocId(ids[0] ?? "");
   };
 
   // Form controls

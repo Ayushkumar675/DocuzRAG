@@ -55,7 +55,6 @@ export default function TopicTreeView({
   const handleDocIdsChange = (ids: string[]) => {
     setLocalDocIds(ids);
     if (onSelectDocIds) onSelectDocIds(ids);
-    if (onSelectDocId) onSelectDocId(ids[0] ?? "");
   };
 
   const nodes = artifact?.content?.nodes ?? [];

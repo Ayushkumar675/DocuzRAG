@@ -256,7 +256,7 @@ wheels = [
 ]
 
 [[package]]
-name = "docuzrag"
+name = "docunova"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
